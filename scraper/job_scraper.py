@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from config.config import USER_AGENT, BASE_URL, MAX_PAGES,SLEEP_MIN_TIMA,SLEEP_MAX_TIMA,GET_DETAIL
 from data.db_connector import insert_or_update_job_data, update_job_details, connect_to_db
 from datetime import datetime
+from selenium.common.exceptions import TimeoutException
 
 class JobScraper:
     def __init__(self, query, site_code, should_update_details=True):
@@ -38,58 +39,64 @@ class JobScraper:
     def fetch_job_list(self):
         while self.page <= MAX_PAGES:
             self.browser.get(f"{BASE_URL}/web/geek/job?query={self.query}&city={self.site_code}&page={self.page}")
-            job_name_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//span[@class="job-name"]'))
-            )
-            job_area_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//span[@class="job-area"]'))
-            )
-            job_salary_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//span[@class="salary"]'))
-            )
-            job_company_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//h3[@class="company-name"]/a'))
-            )
-            job_info_desc_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//div[@class="info-desc"]'))
-            )
-            job_detail_href_elements = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_all_elements_located((By.XPATH, '//a[@class="job-card-left"]'))
-            )
+            try:
+                job_name_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//span[@class="job-name"]'))
+                )
+                job_area_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//span[@class="job-area"]'))
+                )
+                job_salary_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//span[@class="salary"]'))
+                )
+                job_company_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//h3[@class="company-name"]/a'))
+                )
+                job_info_desc_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//div[@class="info-desc"]'))
+                )
+                job_detail_href_elements = WebDriverWait(self.browser, 20).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//a[@class="job-card-left"]'))
+                )
 
-            # 遍历并打印职位数据
-            for job_name, job_area, job_salary, job_company, job_info_desc, job_detail_href in zip(
-                    job_name_elements, job_area_elements, job_salary_elements,
-                    job_company_elements, job_info_desc_elements, job_detail_href_elements):
-                job_data = {
-                    'job_name': job_name.text if job_name else '无标题',
-                    'job_area': job_area.text if job_area else '无地区',
-                    'job_salary': job_salary.text if job_salary else '无薪资',
-                    'job_company': job_company.text if job_company else '无公司',
-                    'job_info_desc': job_info_desc.text if job_info_desc else '无描述',
-                    'job_detail_url': job_detail_href.get_attribute("href") if job_detail_href else '无链接',
-                    'job_detail': '',
-                    'job_degree': '',
-                    'job_experience': ''
-                }
-                self.data.append(job_data)
+                # 遍历并打印职位数据
+                for job_name, job_area, job_salary, job_company, job_info_desc, job_detail_href in zip(
+                        job_name_elements, job_area_elements, job_salary_elements,
+                        job_company_elements, job_info_desc_elements, job_detail_href_elements):
+                    job_data = {
+                        'job_name': job_name.text if job_name else '无标题',
+                        'job_area': job_area.text if job_area else '无地区',
+                        'job_salary': job_salary.text if job_salary else '无薪资',
+                        'job_company': job_company.text if job_company else '无公司',
+                        'job_info_desc': job_info_desc.text if job_info_desc else '无描述',
+                        'job_detail_url': job_detail_href.get_attribute("href") if job_detail_href else '无链接',
+                        'job_detail': '',
+                        'job_degree': '',
+                        'job_experience': ''
+                    }
+                    self.data.append(job_data)
 
-                # 插入或更新职位数据到数据库
-                if self.db_connection:
-                    insert_or_update_job_data(job_data)
+                    # 插入或更新职位数据到数据库
+                    if self.db_connection:
+                        insert_or_update_job_data(job_data)
 
-            print(f"第{self.page}页完成")
-            self.page += 1
-            time.sleep(random.uniform(SLEEP_MIN_TIMA, SLEEP_MAX_TIMA))
+                print(f"第{self.page}页完成")
+                self.page += 1
+                time.sleep(random.uniform(SLEEP_MIN_TIMA, SLEEP_MAX_TIMA))
+                # 一次性导出Excel
+                self.export_to_excel()
+            except TimeoutException:
+                print(f"第{self.page}页加载超时，可能没有职位数据，结束爬虫")
+                break  # 结束爬虫或者跳过当前页
 
-        # 一次性导出Excel
-        self.export_to_excel()
 
     def fetch_job_details(self):
         if not self.should_update_details:
             print("未设置更新详情，跳过更新")
             return
-
+        if len(self.data) == 0 :
+            print("不存在数据，跳过更新")
+            return
         for index, item in enumerate(self.data):
             print(f"准备更新第{index + 1}条职位数据")
             job_detail_url = item["job_detail_url"]
