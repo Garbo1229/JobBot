@@ -1,3 +1,6 @@
+-- 如果数据库已存在，删除数据库
+DROP DATABASE IF EXISTS job_data;
+
 -- 创建数据库
 CREATE DATABASE job_data;
 
@@ -12,7 +15,7 @@ CREATE TABLE jobs (
     job_area VARCHAR(255) NOT NULL,
     job_salary VARCHAR(255) NOT NULL,
     job_info_desc TEXT,
-    job_detail_url VARCHAR(255) NOT NULL UNIQUE,  -- 添加唯一约束
+    job_detail_url TEXT NOT NULL,
     job_detail TEXT,
     job_degree VARCHAR(255),
     job_experience VARCHAR(255)
