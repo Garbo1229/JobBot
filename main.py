@@ -2,7 +2,7 @@ from scraper.job_scraper import JobScraper
 from utils.search_code import search_code
 from config.config import QUERY
 if __name__ == "__main__":
-    search_name = input("请输入中文名称进行搜索: ").strip()
+    search_name = input("请输入城市名称进行搜索: ").strip()
     site_code = search_code('site.json', search_name)
 
     if site_code == 0:
