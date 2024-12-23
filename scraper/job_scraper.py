@@ -201,7 +201,7 @@ class JobScraper:
         df = df[columns.values()]
 
         # 打印列名，确保列名正确
-        print(f"当前Excel的列名: {df.columns}")
+#        print(f"当前Excel的列名: {df.columns}")
 
         # 显式将需要更新的列转换为字符串类型
         df["详细描述"] = df["详细描述"].astype(str)
@@ -236,7 +236,7 @@ class JobScraper:
 
         # 将更新后的DataFrame保存回Excel文件
         df.to_excel(self.file_name, index=False)
-        print(f"职位详情已更新到 {self.file_name}")
+#        print(f"职位详情已更新到 {self.file_name}")
 
     def scrape_jobs(self):
         self.start_browser()
